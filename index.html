@@ -4,168 +4,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Money - Pro</title>
-    
+    <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/10972/10972494.png?v=1">
     <link rel="manifest" href="manifest.json?v=1">
-    <link rel="stylesheet" href="style.css">
-
-    <style>
-        /* Стили для кнопок выбора типа транзакции */
-        .type-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .type-btn {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #ddd;
-            background: #f9f9f9;
-            cursor: pointer;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        .type-btn.active-income {
-            background-color: #2ecc71;
-            color: white;
-            border-color: #27ae60;
-        }
-        .type-btn.active-expense {
-            background-color: #e74c3c;
-            color: white;
-            border-color: #c0392b;
-        }
-    </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Smart Money</h1>
-        
-        <div class="balance-card">
-            <p>Twój Balans:</p>
-            <h2 id="balance">0.00 PLN</h2>
-        </div>
-
-        <div class="form">
-            <label>Rodzaj transakcji:</label>
-            <div class="type-selector">
-                <button type="button" id="btnIncome" class="type-btn active-income" onclick="setType('income')">Przychód (+)</button>
-                <button type="button" id="btnExpense" class="type-btn" onclick="setType('expense')">Wydatek (-)</button>
-            </div>
-
-            <input type="text" id="title" placeholder="Nazwa (np. Zakupy)">
-            <input type="number" id="amount" placeholder="Kwota" inputmode="decimal">
-            <input type="date" id="date">
-            <button onclick="addTransaction()" class="main-btn">Dodaj Transakcję</button>
-        </div>
-
-        <div class="filters">
-            <input type="date" id="filterFrom">
-            <input type="date" id="filterTo">
-            <button onclick="exportData()" class="export-btn">Pobierz Raport (.txt)</button>
-        </div>
-
-        <ul id="history"></ul>
+<div class="app-card">
+    <div class="header-gradient">
+        <h2>Twój Całkowity Balans</h2>
+        <div id="total-balance">0.00 PLN</div>
     </div>
 
-    <script>
-        let currentType = 'income';
+    <div class="summary-boxes">
+        <div class="box">
+            <span>Przychody</span>
+            <div id="money-plus" class="income-text">+0.00</div>
+        </div>
+        <div class="box">
+            <span>Wydatki</span>
+            <div id="money-minus" class="expense-text">-0.00</div>
+        </div>
+    </div>
 
-        // Функция переключения типа (Доход/Расход)
-        function setType(type) {
-            currentType = type;
-            const btnInc = document.getElementById('btnIncome');
-            const btnExp = document.getElementById('btnExpense');
+    <div class="form-section">
+        <input type="text" id="text" placeholder="Opis (np. Zakupy)">
+        <div class="row">
+            <select id="category">
+                <option value="💰 Praca">💰 Praca</option>
+                <option value="🍕 Jedzenie">🍕 Jedzenie</option>
+                <option value="🚌 Transport">🚌 Transport</option>
+                <option value="🎬 Rozrywka">🎬 Rozrywka</option>
+                <option value="🏠 Dom">🏠 Dom</option>
+                <option value="⚙️ Inne">⚙️ Inne</option>
+            </select>
+            <input type="number" id="amount" placeholder="Kwota" step="any" inputmode="decimal">
+        </div>
+        <button id="add-btn" class="btn-main">Dodaj Transakcję</button>
+    </div>
 
-            if (type === 'income') {
-                btnInc.classList.add('active-income');
-                btnExp.classList.remove('active-expense');
-            } else {
-                btnExp.classList.add('active-expense');
-                btnInc.classList.remove('active-income');
-            }
+    <div class="history-container">
+        <h3>Ostatnie operacje</h3>
+        <div id="list" class="list"></div>
+    </div>
+
+    <div class="export-section">
+        <p>Eksportuj raport за период:</p>
+        <div class="date-inputs">
+            <input type="date" id="date-from">
+            <span>do</span>
+            <input type="date" id="date-to">
+        </div>
+        <button onclick="exportFilteredData()" class="btn-gradient-download">
+            📥 Pobierz Wybrany Raport
+        </button>
+        <button onclick="resetAll()" class="btn-reset-simple">Wyczyść wszystkie dane</button>
+    </div>
+</div>
+
+<script>
+    const balance = document.getElementById('total-balance');
+    const moneyPlus = document.getElementById('money-plus');
+    const moneyMinus = document.getElementById('money-minus');
+    const list = document.getElementById('list');
+    const text = document.getElementById('text');
+    const amount = document.getElementById('amount');
+    const category = document.getElementById('category');
+    const btn = document.getElementById('add-btn');
+
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+    const icons = {
+        '💰 Praca': '#e1faf1', '🍕 Jedzenie': '#fff4e1', 
+        '🚌 Transport': '#e1f5ff', '🎬 Rozrywka': '#f9e1ff', 
+        '🏠 Dom': '#f1f1f1', '⚙️ Inne': '#f1f1f1'
+    };
+
+    function addTransaction() {
+        if (text.value === '' || amount.value === '') return;
+        
+        let val = parseFloat(amount.value);
+        const cat = category.value;
+
+        // Авто-логика знака: Praca это всегда +, остальное всегда -
+        if (cat === '💰 Praca') {
+            val = Math.abs(val); 
+        } else {
+            val = -Math.abs(val); 
         }
 
-        // Загрузка данных
-        let transactions = JSON.parse(localStorage.getItem('moneyData')) || [];
-
-        function updateUI() {
-            const history = document.getElementById('history');
-            const balance = document.getElementById('balance');
-            history.innerHTML = '';
-            
-            let total = 0;
-            transactions.forEach((t, index) => {
-                total += t.amount;
-                const li = document.createElement('li');
-                li.className = t.amount > 0 ? 'income-item' : 'expense-item';
-                li.innerHTML = `
-                    <span>${t.title} (${t.date})</span>
-                    <b>${t.amount.toFixed(2)} PLN</b>
-                    <button onclick="deleteItem(${index})">x</button>
-                `;
-                history.appendChild(li);
-            });
-            balance.innerText = `${total.toFixed(2)} PLN`;
-            localStorage.setItem('moneyData', JSON.stringify(transactions));
-        }
-
-        function addTransaction() {
-            const title = document.getElementById('title').value;
-            let amount = parseFloat(document.getElementById('amount').value);
-            const date = document.getElementById('date').value;
-
-            if (!title || isNaN(amount) || !date) {
-                alert('Wypełnij wszystkie pola!');
-                return;
-            }
-
-            // Если выбран "Расход", делаем число отрицательным автоматически
-            if (currentType === 'expense') {
-                amount = -Math.abs(amount);
-            } else {
-                amount = Math.abs(amount);
-            }
-
-            transactions.push({ title, amount, date });
-            updateUI();
-            
-            // Сброс формы
-            document.getElementById('title').value = '';
-            document.getElementById('amount').value = '';
-        }
-
-        function deleteItem(index) {
-            transactions.splice(index, 1);
-            updateUI();
-        }
-
-        function exportData() {
-            const from = document.getElementById('filterFrom').value;
-            const to = document.getElementById('filterTo').value;
-            
-            let filtered = transactions;
-            if (from && to) {
-                filtered = transactions.filter(t => t.date >= from && t.date <= to);
-            }
-
-            let text = "RAPORT FINANSOWY\n\n";
-            filtered.forEach(t => {
-                text += `${t.date} | ${t.title}: ${t.amount.toFixed(2)} PLN\n`;
-            });
-
-            const blob = new Blob([text], { type: 'text/plain' });
-            const anchor = document.createElement('a');
-            anchor.download = 'raport_finansowy.txt';
-            anchor.href = window.URL.createObjectURL(blob);
-            anchor.click();
-        }
-
-        // Установка сегодняшней даты по умолчанию
-        document.getElementById('date').valueAsDate = new Date();
+        const now = new Date();
+        const t = {
+            id: Date.now(),
+            text: text.value,
+            amount: val,
+            category: cat,
+            fullDate: now.toISOString().split('T')[0],
+            timeDisplay: now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})
+        };
+        
+        transactions.push(t);
         updateUI();
-    </script>
+        updateLocalStorage();
+        text.value = ''; amount.value = '';
+    }
+
+    function removeTransaction(id) {
+        if(confirm('Usunąć wpis?')) {
+            transactions = transactions.filter(t => t.id !== id);
+            updateLocalStorage();
+            updateUI();
+        }
+    }
+
+    function exportFilteredData() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        if (!from || !to) { alert('Proszę wybrać zakres dat!'); return; }
+        const filtered = transactions.filter(t => t.fullDate >= from && t.fullDate <= to);
+        let content = `RAPORT FINANSOWY ${from} - ${to}\n\n`;
+        filtered.forEach(t => content += `${t.timeDisplay} | ${t.category} | ${t.text} | ${t.amount.toFixed(2)} PLN\n`);
+        const blob = new Blob([content], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `raport_${from}_${to}.txt`;
+        a.click();
+    }
+
+    function resetAll() {
+        if(confirm('Usunąć wszystko?')) {
+            transactions = [];
+            updateLocalStorage();
+            updateUI();
+        }
+    }
+
+    function updateUI() {
+        list.innerHTML = '';
+        transactions.forEach(t => {
+            const isPlus = t.amount > 0;
+            const emoji = t.category.split(' ')[0];
+            const item = document.createElement('div');
+            item.className = 'item';
+            
+            // Здесь магия: класс plus для зеленого, minus для красного
+            item.innerHTML = `
+                <div class="item-info">
+                    <div class="icon-circle" style="background:${icons[t.category]}">${emoji}</div>
+                    <div>
+                        <b>${t.text}</b>
+                        <small>${t.timeDisplay}</small>
+                    </div>
+                </div>
+                <div class="item-right">
+                    <span class="${isPlus ? 'plus' : 'minus'}">
+                        ${isPlus ? '+' : ''}${t.amount.toFixed(2)} PLN
+                    </span>
+                    <button class="del-btn" onclick="removeTransaction(${t.id})">×</button>
+                </div>
+            `;
+            list.prepend(item);
+        });
+
+        const total = transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2);
+        const inc = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0).toFixed(2);
+        const exp = Math.abs(transactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0)).toFixed(2);
+        
+        balance.innerText = `${total} PLN`;
+        moneyPlus.innerText = `+${inc} PLN`;
+        moneyMinus.innerText = `-${exp} PLN`;
+    }
+
+    function updateLocalStorage() { localStorage.setItem('transactions', JSON.stringify(transactions)); }
+    btn.addEventListener('click', addTransaction);
+    updateUI();
+</script>
 </body>
 </html>
