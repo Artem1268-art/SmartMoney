@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Money - Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+<div class="app-card">
+    <div class="header-gradient">
+        <h2>Twój Całkowity Balans</h2>
+        <div id="total-balance">0.00 PLN</div>
+    </div>
+
+    <div class="summary-boxes">
+        <div class="box">
+            <span>Przychody</span>
+            <div id="money-plus" class="income-text">+0.00</div>
+        </div>
+        <div class="box">
+            <span>Wydatki</span>
+            <div id="money-minus" class="expense-text">-0.00</div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <input type="text" id="text" placeholder="Opis (np. Zakupy)">
+        <div class="row">
+            <select id="category">
+                <option value="💰 Praca">💰 Praca</option>
+                <option value="🍕 Jedzenie">🍕 Jedzenie</option>
+                <option value="🚌 Transport">🚌 Transport</option>
+                <option value="🎬 Rozrywka">🎬 Rozrywka</option>
+                <option value="🏠 Dom">🏠 Dom</option>
+                <option value="⚙️ Inne">⚙️ Inne</option>
+            </select>
+            <input type="number" id="amount" placeholder="Kwota">
+        </div>
+        <button id="add-btn" class="btn-main">Dodaj Transakcję</button>
+    </div>
+
+    <div class="history-container">
+        <h3>Ostatnie operacje</h3>
+        <div id="list" class="list"></div>
+    </div>
+
+    <div class="export-section">
+        <p>Eksportuj raport za okres:</p>
+        <div class="date-inputs">
+            <input type="date" id="date-from">
+            <span>do</span>
+            <input type="date" id="date-to">
+        </div>
+        <button onclick="exportFilteredData()" class="btn-gradient-download">
+            📥 Pobierz Wybrany Raport
+        </button>
+        <button onclick="resetAll()" class="btn-reset-simple">Wyczyść wszystkie dane</button>
+    </div>
+</div>
+
+<script>
+    const balance = document.getElementById('total-balance');
+    const moneyPlus = document.getElementById('money-plus');
+    const moneyMinus = document.getElementById('money-minus');
+    const list = document.getElementById('list');
+    const text = document.getElementById('text');
+    const amount = document.getElementById('amount');
+    const category = document.getElementById('category');
+    const btn = document.getElementById('add-btn');
+
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+    const icons = {
+        '💰 Praca': '#e1faf1', '🍕 Jedzenie': '#fff4e1', 
+        '🚌 Transport': '#e1f5ff', '🎬 Rozrywka': '#f9e1ff', 
+        '🏠 Dom': '#f1f1f1', '⚙️ Inne': '#f1f1f1'
+    };
+
+    function addTransaction() {
+        if (text.value === '' || amount.value === '') return;
+        
+        const now = new Date();
+        const t = {
+            id: Date.now(),
+            text: text.value,
+            amount: parseFloat(amount.value),
+            category: category.value,
+            fullDate: now.toISOString().split('T')[0], // Формат YYYY-MM-DD для фильтра
+            timeDisplay: now.toLocaleDateString('pl-PL') + ' ' + now.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})
+        };
+        
+        transactions.push(t);
+        updateUI();
+        updateLocalStorage();
+        text.value = ''; amount.value = '';
+    }
+
+    function removeTransaction(id) {
+        if(confirm('Usunąć wpis?')) {
+            transactions = transactions.filter(t => t.id !== id);
+            updateLocalStorage();
+            updateUI();
+        }
+    }
+
+    function exportFilteredData() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+
+        if (!from || !to) {
+            alert('Proszę wybrać zakres dat!');
+            return;
+        }
+
+        const filtered = transactions.filter(t => t.fullDate >= from && t.fullDate <= to);
+
+        if (filtered.length === 0) {
+            alert('Brak transakcji w tym okresie.');
+            return;
+        }
+
+        let content = `RAPORT FINANSOWY OD ${from} DO ${to}\n\n`;
+        filtered.forEach(t => content += `${t.timeDisplay} | ${t.text} | ${t.amount.toFixed(2)} PLN\n`);
+        
+        const blob = new Blob([content], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `raport_${from}_${to}.txt`;
+        a.click();
+    }
+
+    function resetAll() {
+        if(confirm('Usunąć wszystko?')) {
+            transactions = [];
+            updateLocalStorage();
+            updateUI();
+        }
+    }
+
+    function updateUI() {
+        list.innerHTML = '';
+        transactions.forEach(t => {
+            const isPlus = t.amount > 0;
+            const emoji = t.category.split(' ')[0];
+            const item = document.createElement('div');
+            item.className = 'item';
+            item.innerHTML = `
+                <div class="item-info">
+                    <div class="icon-circle" style="background:${icons[t.category]}">${emoji}</div>
+                    <div>
+                        <b>${t.text}</b>
+                        <small>${t.timeDisplay}</small>
+                    </div>
+                </div>
+                <div class="item-right">
+                    <span class="${isPlus ? 'plus' : 'minus'}">${isPlus ? '+' : ''}${t.amount.toFixed(2)} PLN</span>
+                    <button class="del-btn" onclick="removeTransaction(${t.id})">×</button>
+                </div>
+            `;
+            list.prepend(item);
+        });
+
+        const total = transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2);
+        const inc = transactions.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0).toFixed(2);
+        const exp = (transactions.filter(t => t.amount < 0).reduce((acc, t) => acc + t.amount, 0) * -1).toFixed(2);
+        
+        balance.innerText = `${total} PLN`;
+        moneyPlus.innerText = `+${inc} PLN`;
+        moneyMinus.innerText = `-${exp} PLN`;
+    }
+
+    function updateLocalStorage() { localStorage.setItem('transactions', JSON.stringify(transactions)); }
+    btn.addEventListener('click', addTransaction);
+    updateUI();
+</script>
+</body>
+</html>
