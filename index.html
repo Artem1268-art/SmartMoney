@@ -49,7 +49,7 @@
     </div>
 
     <div class="export-section">
-        <p>Eksportuj raport за период:</p>
+        <p>Eksportuj raport za okres:</p>
         <div class="date-inputs">
             <input type="date" id="date-from">
             <span>do</span>
@@ -86,7 +86,7 @@
         let val = parseFloat(amount.value);
         const cat = category.value;
 
-        // Авто-логика знака: Praca это всегда +, остальное всегда -
+        
         if (cat === '💰 Praca') {
             val = Math.abs(val); 
         } else {
@@ -147,7 +147,7 @@
             const item = document.createElement('div');
             item.className = 'item';
             
-            // Здесь магия: класс plus для зеленого, minus для красного
+            
             item.innerHTML = `
                 <div class="item-info">
                     <div class="icon-circle" style="background:${icons[t.category]}">${emoji}</div>
@@ -181,3 +181,4 @@
 </script>
 </body>
 </html>
+
