@@ -52,7 +52,7 @@ input, select { padding: 12px; border: 1px solid #f1f2f6; border-radius: 12px; b
 .item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #fff; margin-bottom: 8px; border-radius: 15px; border: 1px solid #f8f9fa; }
 .icon-circle { width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 
-/* НОВЫЙ СТИЛЬ ДЛЯ ЭКСПОРТА */
+
 .export-section {
     background: #f8faff; padding: 25px; border-top: 2px dashed #eef2ff; text-align: center;
 }
@@ -78,3 +78,4 @@ input, select { padding: 12px; border: 1px solid #f1f2f6; border-radius: 12px; b
 .plus { color: var(--income); font-weight: bold; }
 .minus { color: var(--expense); font-weight: bold; }
 .del-btn { background: none; border: none; color: #dfe6e9; cursor: pointer; }
+
